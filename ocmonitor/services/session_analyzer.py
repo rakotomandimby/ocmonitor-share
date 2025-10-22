@@ -125,17 +125,18 @@ class SessionAnalyzer:
         """
         return TimeframeAnalyzer.create_daily_breakdown(sessions)
 
-    def create_weekly_breakdown(self, sessions: List[SessionData]) -> List[WeeklyUsage]:
+    def create_weekly_breakdown(self, sessions: List[SessionData], week_start_day: int = 0) -> List[WeeklyUsage]:
         """Create weekly usage breakdown.
 
         Args:
             sessions: List of sessions to analyze
+            week_start_day: Day to start week on (0=Monday, 6=Sunday)
 
         Returns:
             List of WeeklyUsage objects
         """
         daily_usage = self.create_daily_breakdown(sessions)
-        return TimeframeAnalyzer.create_weekly_breakdown(daily_usage)
+        return TimeframeAnalyzer.create_weekly_breakdown(daily_usage, week_start_day)
 
     def create_monthly_breakdown(self, sessions: List[SessionData]) -> List[MonthlyUsage]:
         """Create monthly usage breakdown.

@@ -5,7 +5,7 @@ import os
 import toml
 from pathlib import Path
 from typing import Dict, Any, Optional
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 from decimal import Decimal
 
 
@@ -15,7 +15,8 @@ class PathsConfig(BaseModel):
     opencode_storage_dir: str = Field(default="~/.local/share/opencode/storage")
     export_dir: str = Field(default="./exports")
 
-    @validator('messages_dir', 'opencode_storage_dir', 'export_dir')
+    @field_validator('messages_dir', 'opencode_storage_dir', 'export_dir')
+    @classmethod
     def expand_path(cls, v):
         """Expand user paths and environment variables."""
         return os.path.expanduser(os.path.expandvars(v))

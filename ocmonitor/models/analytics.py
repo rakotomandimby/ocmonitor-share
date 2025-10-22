@@ -214,28 +214,39 @@ class TimeframeAnalyzer:
         ]
 
     @staticmethod
-    def create_weekly_breakdown(daily_usage: List[DailyUsage]) -> List[WeeklyUsage]:
-        """Create weekly breakdown from daily usage."""
+    def create_weekly_breakdown(daily_usage: List[DailyUsage], week_start_day: int = 0) -> List[WeeklyUsage]:
+        """Create weekly breakdown from daily usage.
+        
+        Args:
+            daily_usage: List of daily usage records
+            week_start_day: Day to start week on (0=Monday, 6=Sunday)
+        
+        Returns:
+            List of WeeklyUsage objects
+        """
+        from ..utils.time_utils import TimeUtils
+        
         weekly_data = defaultdict(list)
 
         for day in daily_usage:
-            # Get ISO week and year
-            year, week, _ = day.date.isocalendar()
-            weekly_data[(year, week)].append(day)
+            # Get the week start date for this day
+            week_start, week_end = TimeUtils.get_custom_week_range(day.date, week_start_day)
+            
+            # Use (week_start, week_end) tuple as key for grouping
+            week_key = (week_start, week_end)
+            weekly_data[week_key].append(day)
 
         weekly_breakdown = []
-        for (year, week), days in sorted(weekly_data.items()):
-            # Calculate week start and end dates
-            jan_4 = date(year, 1, 4)
-            week_start = jan_4 - timedelta(days=jan_4.weekday()) + timedelta(weeks=week-1)
-            week_end = week_start + timedelta(days=6)
-
+        for (week_start, week_end), days in sorted(weekly_data.items()):
+            # For display purposes, calculate ISO week number for the week_start
+            year, week, _ = week_start.isocalendar()
+            
             weekly_breakdown.append(WeeklyUsage(
                 year=year,
                 week=week,
                 start_date=week_start,
                 end_date=week_end,
-                daily_usage=days
+                daily_usage=sorted(days, key=lambda d: d.date)
             ))
 
         return weekly_breakdown

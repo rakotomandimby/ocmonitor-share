@@ -14,9 +14,10 @@ Transform your OpenCode usage data into beautiful, actionable insights with comp
 ### 💼 Professional Analytics
 - **📈 Comprehensive Reports** - Daily, weekly, and monthly usage breakdowns
 - **💰 Cost Tracking** - Accurate cost calculations for multiple AI models
-- **📊 Model Analytics** - Detailed breakdown of usage per AI model
+- **📊 Model Analytics** - Detailed breakdown of usage per AI model with `--breakdown` flag
 - **📋 Project Analytics** - Track costs and token usage by coding project
 - **⏱️ Performance Metrics** - Session duration and processing time tracking
+- **📅 Flexible Week Boundaries** - Customize weekly reports with 7 start day options (Monday-Sunday)
 
 ### 🎨 Beautiful User Interface
 - **🌈 Rich Terminal UI** - Professional design with clean styling and optimal space utilization
@@ -106,6 +107,30 @@ ocmonitor export sessions ~/.local/share/opencode/storage/message --format csv
 *Click image to view full-size screenshot of sessions summary output*
 
 
+
+### Time-Based Reporting
+
+#### `ocmonitor daily|weekly|monthly <path> [--breakdown]`
+
+Time-based usage breakdown with optional per-model cost analysis.
+
+```bash
+# Daily breakdown
+ocmonitor daily ~/.local/share/opencode/storage/message
+
+# Weekly breakdown with per-model breakdown
+ocmonitor weekly ~/.local/share/opencode/storage/message --breakdown
+
+# Monthly breakdown
+ocmonitor monthly ~/.local/share/opencode/storage/message
+
+# Weekly with custom start day
+ocmonitor weekly ~/.local/share/opencode/storage/message --start-day friday --breakdown
+```
+
+**`--breakdown` Flag:** Shows token consumption and cost per model within each time period (daily/weekly/monthly), making it easy to see which models are consuming resources.
+
+Supported days: `monday`, `tuesday`, `wednesday`, `thursday`, `friday`, `saturday`, `sunday`
 
 ### Live Monitoring Commands
 

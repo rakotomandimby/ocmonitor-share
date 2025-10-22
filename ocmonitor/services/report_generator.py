@@ -2,6 +2,8 @@
 
 from typing import List, Dict, Any, Optional
 from datetime import date
+from decimal import Decimal
+from collections import defaultdict
 from rich.console import Console
 from rich.panel import Panel
 
@@ -25,6 +27,44 @@ class ReportGenerator:
         self.analyzer = analyzer
         self.table_formatter = TableFormatter(console)
         self.console = console or Console()
+
+    def _get_model_breakdown_for_sessions(self, sessions: List[SessionData]) -> List[Dict[str, Any]]:
+        """Calculate per-model breakdown for a set of sessions.
+
+        Args:
+            sessions: List of sessions to analyze
+
+        Returns:
+            List of model breakdown dicts sorted by cost descending
+        """
+        model_data: Dict[str, Dict[str, Any]] = {}
+
+        for session in sessions:
+            for file in session.files:
+                model = file.model_id
+                if model not in model_data:
+                    model_data[model] = {
+                        'sessions': set(),
+                        'interactions': 0,
+                        'tokens': 0,
+                        'cost': Decimal('0.0')
+                    }
+                model_data[model]['sessions'].add(session.session_id)
+                model_data[model]['interactions'] += 1
+                model_data[model]['tokens'] += file.tokens.total
+                model_data[model]['cost'] += file.calculate_cost(self.analyzer.pricing_data)
+
+        results = []
+        for model, data in model_data.items():
+            results.append({
+                'model': model,
+                'sessions': len(data['sessions']),
+                'interactions': data['interactions'],
+                'tokens': data['tokens'],
+                'cost': data['cost']
+            })
+
+        return sorted(results, key=lambda x: x['cost'], reverse=True)
 
     def generate_single_session_report(self, session_path: str, output_format: str = "table") -> Optional[Dict[str, Any]]:
         """Generate report for a single session.
@@ -91,7 +131,7 @@ class ReportGenerator:
         return report_data
 
     def generate_daily_report(self, base_path: str, month: Optional[str] = None,
-                            output_format: str = "table") -> Dict[str, Any]:
+                            output_format: str = "table", breakdown: bool = False) -> Dict[str, Any]:
         """Generate daily breakdown report.
 
         Args:
@@ -122,7 +162,7 @@ class ReportGenerator:
         }
 
         if output_format == "table":
-            self._display_daily_breakdown_table(daily_usage)
+            self._display_daily_breakdown_table(daily_usage, breakdown)
         elif output_format == "json":
             return self._format_daily_breakdown_json(daily_usage)
         elif output_format == "csv":
@@ -131,13 +171,16 @@ class ReportGenerator:
         return report_data
 
     def generate_weekly_report(self, base_path: str, year: Optional[int] = None,
-                             output_format: str = "table") -> Dict[str, Any]:
+                              output_format: str = "table", breakdown: bool = False,
+                              week_start_day: int = 0) -> Dict[str, Any]:
         """Generate weekly breakdown report.
 
         Args:
             base_path: Path to directory containing sessions
             year: Optional year filter
             output_format: Output format ("table", "json", "csv")
+            breakdown: Show per-model breakdown
+            week_start_day: Day to start week on (0=Monday, 6=Sunday)
 
         Returns:
             Report data
@@ -150,16 +193,16 @@ class ReportGenerator:
             start_date, end_date = TimeUtils.get_year_range(year)
             sessions = self.analyzer.filter_sessions_by_date(sessions, start_date, end_date)
 
-        weekly_usage = self.analyzer.create_weekly_breakdown(sessions)
+        weekly_usage = self.analyzer.create_weekly_breakdown(sessions, week_start_day)
 
         report_data = {
             'type': 'weekly_breakdown',
             'weekly_usage': weekly_usage,
-            'filter': {'year': year} if year else None
+            'filter': {'year': year, 'week_start_day': week_start_day} if year or week_start_day != 0 else None
         }
 
         if output_format == "table":
-            self._display_weekly_breakdown_table(weekly_usage)
+            self._display_weekly_breakdown_table(weekly_usage, breakdown, week_start_day)
         elif output_format == "json":
             return self._format_weekly_breakdown_json(weekly_usage)
         elif output_format == "csv":
@@ -168,7 +211,7 @@ class ReportGenerator:
         return report_data
 
     def generate_monthly_report(self, base_path: str, year: Optional[int] = None,
-                              output_format: str = "table") -> Dict[str, Any]:
+                              output_format: str = "table", breakdown: bool = False) -> Dict[str, Any]:
         """Generate monthly breakdown report.
 
         Args:
@@ -196,7 +239,7 @@ class ReportGenerator:
         }
 
         if output_format == "table":
-            self._display_monthly_breakdown_table(monthly_usage)
+            self._display_monthly_breakdown_table(monthly_usage, breakdown)
         elif output_format == "json":
             return self._format_monthly_breakdown_json(monthly_usage)
         elif output_format == "csv":
@@ -319,44 +362,126 @@ class ReportGenerator:
         summary_panel = self.table_formatter.create_summary_panel(sessions, self.analyzer.pricing_data)
         self.console.print(summary_panel)
 
-    def _display_daily_breakdown_table(self, daily_usage: List[DailyUsage]):
+    def _display_daily_breakdown_table(self, daily_usage: List[DailyUsage], breakdown: bool = False):
         """Display daily breakdown as table."""
-        table = self.table_formatter.create_daily_table(daily_usage, self.analyzer.pricing_data)
-        self.console.print(table)
+        if breakdown:
+            from rich.table import Table
+            table = Table(
+                title="Daily Usage Breakdown",
+                show_header=True,
+                header_style="bold blue",
+                title_style="bold magenta"
+            )
+            
+            table.add_column("Date / Model", style="cyan", no_wrap=True)
+            table.add_column("Sessions", justify="right", style="green")
+            table.add_column("Interactions", justify="right", style="yellow")
+            table.add_column("Total Tokens", justify="right", style="white")
+            table.add_column("Cost", justify="right", style="red")
+            
+            for day in daily_usage:
+                day_cost = day.calculate_total_cost(self.analyzer.pricing_data)
+                table.add_row(
+                    day.date.strftime('%Y-%m-%d'),
+                    f"{len(day.sessions)}",
+                    f"{day.total_interactions}",
+                    f"{day.total_tokens.total:,}",
+                    f"${day_cost:.2f}"
+                )
+                
+                model_breakdown = self._get_model_breakdown_for_sessions(day.sessions)
+                for model_data in model_breakdown:
+                    table.add_row(
+                        f"  ↳ {model_data['model']}",
+                        f"{model_data['sessions']}",
+                        f"{model_data['interactions']}",
+                        f"{model_data['tokens']:,}",
+                        f"${model_data['cost']:.2f}",
+                        style="dim"
+                    )
+            
+            self.console.print(table)
+        else:
+            table = self.table_formatter.create_daily_table(daily_usage, self.analyzer.pricing_data)
+            self.console.print(table)
 
-    def _display_weekly_breakdown_table(self, weekly_usage: List[WeeklyUsage]):
-        """Display weekly breakdown as table."""
-        # Create a table similar to daily but for weeks
+    def _display_weekly_breakdown_table(self, weekly_usage: List[WeeklyUsage], breakdown: bool = False, week_start_day: int = 0):
+        """Display weekly breakdown as table.
+        
+        Args:
+            weekly_usage: List of weekly usage data
+            breakdown: Show per-model breakdown
+            week_start_day: Day week starts on (0=Monday, 6=Sunday)
+        """
         from rich.table import Table
-        table = Table(title="Weekly Usage Breakdown", show_header=True)
+        from ..utils.time_utils import TimeUtils, WEEKDAY_NAMES
+        
+        title = "Weekly Usage Breakdown"
+        if week_start_day != 0:
+            day_name = WEEKDAY_NAMES[week_start_day]
+            title += f" (weeks start on {day_name})"
+        
+        table = Table(
+            title=title,
+            show_header=True,
+            header_style="bold blue",
+            title_style="bold magenta"
+        )
 
-        table.add_column("Week", style="cyan")
+        table.add_column("Week", style="cyan", no_wrap=True)
+        table.add_column("Date Range", style="dim cyan", no_wrap=False)
         table.add_column("Sessions", justify="right", style="green")
-        table.add_column("Interactions", justify="right", style="green")
-        table.add_column("Total Tokens", justify="right", style="bold blue")
+        table.add_column("Interactions", justify="right", style="yellow")
+        table.add_column("Total Tokens", justify="right", style="white")
         table.add_column("Cost", justify="right", style="red")
 
         for week in weekly_usage:
             week_cost = week.calculate_total_cost(self.analyzer.pricing_data)
+            week_label = f"{week.year}-W{week.week:02d}"
+            date_range = TimeUtils.format_week_range(week.start_date, week.end_date)
+            
             table.add_row(
-                f"{week.year}-W{week.week:02d}",
+                week_label,
+                date_range,
                 f"{week.total_sessions}",
                 f"{week.total_interactions}",
                 f"{week.total_tokens.total:,}",
-                f"${week_cost:.4f}"
+                f"${week_cost:.2f}"
             )
+            
+            if breakdown:
+                week_sessions = []
+                for day in week.daily_usage:
+                    week_sessions.extend(day.sessions)
+                
+                model_breakdown = self._get_model_breakdown_for_sessions(week_sessions)
+                for model_data in model_breakdown:
+                    table.add_row(
+                        "",
+                        f"  ↳ {model_data['model']}",
+                        f"{model_data['sessions']}",
+                        f"{model_data['interactions']}",
+                        f"{model_data['tokens']:,}",
+                        f"${model_data['cost']:.2f}",
+                        style="dim"
+                    )
 
         self.console.print(table)
 
-    def _display_monthly_breakdown_table(self, monthly_usage: List[MonthlyUsage]):
+    def _display_monthly_breakdown_table(self, monthly_usage: List[MonthlyUsage], breakdown: bool = False):
         """Display monthly breakdown as table."""
         from rich.table import Table
-        table = Table(title="Monthly Usage Breakdown", show_header=True)
+        table = Table(
+            title="Monthly Usage Breakdown",
+            show_header=True,
+            header_style="bold blue",
+            title_style="bold magenta"
+        )
 
-        table.add_column("Month", style="cyan")
+        table.add_column("Month / Model", style="cyan", no_wrap=True)
         table.add_column("Sessions", justify="right", style="green")
-        table.add_column("Interactions", justify="right", style="green")
-        table.add_column("Total Tokens", justify="right", style="bold blue")
+        table.add_column("Interactions", justify="right", style="yellow")
+        table.add_column("Total Tokens", justify="right", style="white")
         table.add_column("Cost", justify="right", style="red")
 
         for month in monthly_usage:
@@ -366,8 +491,25 @@ class ReportGenerator:
                 f"{month.total_sessions}",
                 f"{month.total_interactions}",
                 f"{month.total_tokens.total:,}",
-                f"${month_cost:.4f}"
+                f"${month_cost:.2f}"
             )
+            
+            if breakdown:
+                month_sessions = []
+                for week in month.weekly_usage:
+                    for day in week.daily_usage:
+                        month_sessions.extend(day.sessions)
+                
+                model_breakdown = self._get_model_breakdown_for_sessions(month_sessions)
+                for model_data in model_breakdown:
+                    table.add_row(
+                        f"  ↳ {model_data['model']}",
+                        f"{model_data['sessions']}",
+                        f"{model_data['interactions']}",
+                        f"{model_data['tokens']:,}",
+                        f"${model_data['cost']:.2f}",
+                        style="dim"
+                    )
 
         self.console.print(table)
 

@@ -210,8 +210,9 @@ def live(ctx: click.Context, path: Optional[str], interval: Optional[int], no_co
 @click.option('--format', '-f', 'output_format',
               type=click.Choice(['table', 'json', 'csv']),
               default='table', help='Output format')
+@click.option('--breakdown', is_flag=True, help='Show per-model breakdown')
 @click.pass_context
-def daily(ctx: click.Context, path: Optional[str], month: Optional[str], output_format: str):
+def daily(ctx: click.Context, path: Optional[str], month: Optional[str], output_format: str, breakdown: bool):
     """Show daily breakdown of OpenCode usage.
 
     PATH: Path to directory containing session folders
@@ -224,7 +225,7 @@ def daily(ctx: click.Context, path: Optional[str], month: Optional[str], output_
 
     try:
         report_generator = ctx.obj['report_generator']
-        result = report_generator.generate_daily_report(path, month, output_format)
+        result = report_generator.generate_daily_report(path, month, output_format, breakdown)
 
         if output_format == 'json':
             click.echo(json.dumps(result, indent=2, default=json_serializer))
@@ -242,24 +243,39 @@ def daily(ctx: click.Context, path: Optional[str], month: Optional[str], output_
 @cli.command()
 @click.argument('path', type=click.Path(exists=True), required=False)
 @click.option('--year', type=int, help='Year to analyze')
+@click.option('--start-day', 
+              type=click.Choice(['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'], 
+                               case_sensitive=False),
+              default='monday',
+              help='Day to start the week (default: monday)')
 @click.option('--format', '-f', 'output_format',
               type=click.Choice(['table', 'json', 'csv']),
               default='table', help='Output format')
+@click.option('--breakdown', is_flag=True, help='Show per-model breakdown')
 @click.pass_context
-def weekly(ctx: click.Context, path: Optional[str], year: Optional[int], output_format: str):
+def weekly(ctx: click.Context, path: Optional[str], year: Optional[int], start_day: str, output_format: str, breakdown: bool):
     """Show weekly breakdown of OpenCode usage.
 
     PATH: Path to directory containing session folders
           (defaults to configured messages directory)
+          
+    Examples:
+        ocmonitor weekly                    # Default (Monday start)
+        ocmonitor weekly --start-day sunday # Sunday to Sunday weeks
+        ocmonitor weekly --start-day friday # Friday to Friday weeks
     """
     config = ctx.obj['config']
 
     if not path:
         path = config.paths.messages_dir
 
+    # Convert day name to weekday number
+    from .utils.time_utils import WEEKDAY_MAP
+    week_start_day = WEEKDAY_MAP[start_day.lower()]
+
     try:
         report_generator = ctx.obj['report_generator']
-        result = report_generator.generate_weekly_report(path, year, output_format)
+        result = report_generator.generate_weekly_report(path, year, output_format, breakdown, week_start_day)
 
         if output_format == 'json':
             click.echo(json.dumps(result, indent=2, default=json_serializer))
@@ -280,8 +296,9 @@ def weekly(ctx: click.Context, path: Optional[str], year: Optional[int], output_
 @click.option('--format', '-f', 'output_format',
               type=click.Choice(['table', 'json', 'csv']),
               default='table', help='Output format')
+@click.option('--breakdown', is_flag=True, help='Show per-model breakdown')
 @click.pass_context
-def monthly(ctx: click.Context, path: Optional[str], year: Optional[int], output_format: str):
+def monthly(ctx: click.Context, path: Optional[str], year: Optional[int], output_format: str, breakdown: bool):
     """Show monthly breakdown of OpenCode usage.
 
     PATH: Path to directory containing session folders
@@ -294,7 +311,7 @@ def monthly(ctx: click.Context, path: Optional[str], year: Optional[int], output
 
     try:
         report_generator = ctx.obj['report_generator']
-        result = report_generator.generate_monthly_report(path, year, output_format)
+        result = report_generator.generate_monthly_report(path, year, output_format, breakdown)
 
         if output_format == 'json':
             click.echo(json.dumps(result, indent=2, default=json_serializer))
@@ -432,7 +449,7 @@ def export(ctx: click.Context, report_type: str, path: Optional[str],
         elif report_type == 'daily':
             report_data = report_generator.generate_daily_report(path, None, 'table')  # Use 'table' to get raw data
         elif report_type == 'weekly':
-            report_data = report_generator.generate_weekly_report(path, None, 'table')  # Use 'table' to get raw data
+            report_data = report_generator.generate_weekly_report(path, None, 'table', False, 0)  # Use 'table' to get raw data, Monday start
         elif report_type == 'monthly':
             report_data = report_generator.generate_monthly_report(path, None, 'table')  # Use 'table' to get raw data
         elif report_type == 'models':

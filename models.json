@@ -7,6 +7,22 @@
     "contextWindow": 200000,
     "sessionQuota": 6.00
   },
+  "claude-sonnet-4-5-20250929": {
+    "input": 3.00,
+    "output": 15.00,
+    "cacheWrite": 3.75,
+    "cacheRead": 0.30,
+    "contextWindow": 200000,
+    "sessionQuota": 6.00
+  },
+   "claude-haiku-4-5-20251001": {
+    "input": 1.00,
+    "output": 5.00,
+    "cacheWrite": 1.25,
+    "cacheRead": 0.10,
+    "contextWindow": 200000,
+    "sessionQuota": 6.00
+  },
   "claude-opus-4": {
     "input": 15.00,
     "output": 75.00,
@@ -72,6 +88,14 @@
     "sessionQuota": 0.00
   },
     "z-ai/glm-4.5": {
+    "input": 0.60,
+    "output": 2.20,
+    "cacheWrite": 0.11,
+    "cacheRead": 0.00,
+    "contextWindow": 131000,
+    "sessionQuota": 0.00
+  },
+   "z-ai/glm-4.6": {
     "input": 0.60,
     "output": 2.20,
     "cacheWrite": 0.11,

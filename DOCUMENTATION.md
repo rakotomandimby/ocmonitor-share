@@ -205,11 +205,11 @@ ocmonitor sessions ~/.local/share/opencode/storage/message --format json
 Daily usage breakdown with cost and token analysis.
 
 ```bash
-# Daily breakdown for the last 30 days
+# Daily breakdown
 ocmonitor daily ~/.local/share/opencode/storage/message
 
-# Specific date range
-ocmonitor daily ~/.local/share/opencode/storage/message --days 7
+# With per-model breakdown
+ocmonitor daily ~/.local/share/opencode/storage/message --breakdown
 
 # JSON output
 ocmonitor daily ~/.local/share/opencode/storage/message --format json
@@ -223,16 +223,31 @@ ocmonitor daily ~/.local/share/opencode/storage/message --format json
 
 ```
 
-#### `ocmonitor weekly <path>`
-Weekly usage patterns and trends.
+#### `ocmonitor weekly <path> [--start-day <day>]`
+Weekly usage patterns and trends with customizable week start days.
 
 ```bash
-# Weekly breakdown
+# Default (Monday start)
 ocmonitor weekly ~/.local/share/opencode/storage/message
 
-# Last 4 weeks
-ocmonitor weekly ~/.local/share/opencode/storage/message --weeks 4
+# Custom week start days
+ocmonitor weekly ~/.local/share/opencode/storage/message --start-day sunday
+ocmonitor weekly ~/.local/share/opencode/storage/message --start-day friday
+
+# With per-model breakdown
+ocmonitor weekly ~/.local/share/opencode/storage/message --start-day sunday --breakdown
+
+# Specific year with custom week start
+ocmonitor weekly ~/.local/share/opencode/storage/message --year 2025 --start-day wednesday
 ```
+
+**Supported Days:** `monday`, `tuesday`, `wednesday`, `thursday`, `friday`, `saturday`, `sunday`
+
+**Features:**
+- 📅 Customize week boundaries to match your calendar preference
+- 🗓️ US standard (Sunday), European (Monday), business week (Friday), etc.
+- 📊 Date range display shows actual week boundaries
+- 🎯 Table title indicates selected week start day
 
 #### `ocmonitor monthly <path>`
 Monthly usage analysis and cost tracking.
@@ -241,8 +256,8 @@ Monthly usage analysis and cost tracking.
 # Monthly breakdown
 ocmonitor monthly ~/.local/share/opencode/storage/message
 
-# Specific number of months
-ocmonitor monthly ~/.local/share/opencode/storage/message --months 6
+# With per-model breakdown
+ocmonitor monthly ~/.local/share/opencode/storage/message --breakdown
 ```
 
 ### 3. Model Analysis Commands
@@ -1424,6 +1439,42 @@ When reporting issues, include:
 - 🐛 **GitHub Issues:** For bug reports and feature requests
 - 💬 **Discussions:** For questions and community help
 - 📚 **Documentation:** Check this guide and README files
+
+---
+
+## 📊 Using the --breakdown Flag
+
+The `--breakdown` flag adds per-model token consumption and cost details to daily, weekly, and monthly reports.
+
+```bash
+# Show model breakdown in daily report
+ocmonitor daily ~/.local/share/opencode/storage/message --breakdown
+
+# Show model breakdown in weekly report
+ocmonitor weekly ~/.local/share/opencode/storage/message --breakdown
+
+# Show model breakdown in monthly report
+ocmonitor monthly ~/.local/share/opencode/storage/message --breakdown
+```
+
+**Example Output:**
+```
+                             Daily Usage Breakdown                              
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━┓
+┃ Date / Model                   ┃ Sessions ┃ Interactions┃ Total Tokens┃    Cost ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━━┩
+│ 2024-01-13                     │        1 │          2 │     1,150 │ $0.0128 │
+│   ↳ claude-sonnet-4-20250514   │        1 │          2 │     1,150 │ $0.0128 │
+│ 2024-01-14                     │        1 │          1 │     5,200 │ $0.0000 │
+│   ↳ grok-code                  │        1 │          1 │     5,200 │ $0.0000 │
+└────────────────────────────────┴──────────┴────────────┴───────────┴─────────┘
+```
+
+**Features:**
+- Model rows indented and styled distinctly
+- Shows sessions, interactions, tokens, and cost per model
+- Models sorted by cost (descending)
+- Total row shows aggregate values
 
 ---
 

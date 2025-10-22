@@ -3,6 +3,30 @@
 from datetime import datetime, date, timedelta
 from typing import Optional, Tuple
 
+WEEKDAY_MAP = {
+    'monday': 0,
+    'tuesday': 1,
+    'wednesday': 2,
+    'thursday': 3,
+    'friday': 4,
+    'saturday': 5,
+    'sunday': 6
+}
+
+WEEKDAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+
+WEEKDAY_MAP = {
+    'monday': 0,
+    'tuesday': 1,
+    'wednesday': 2,
+    'thursday': 3,
+    'friday': 4,
+    'saturday': 5,
+    'sunday': 6
+}
+
+WEEKDAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+
 
 class TimeUtils:
     """Utility functions for time operations."""
@@ -170,6 +194,60 @@ class TimeUtils:
         today = date.today()
         year, week, _ = today.isocalendar()
         return TimeUtils.get_week_range(year, week)
+
+    @staticmethod
+    def get_custom_week_start(target_date: date, week_start_day: int = 0) -> date:
+        """Get the start date of the week containing target_date.
+
+        Args:
+            target_date: The date to find the week start for
+            week_start_day: Day of week to start on (0=Monday, 6=Sunday)
+
+        Returns:
+            Date of the week's start day
+
+        Example:
+            If target_date is 2025-10-23 (Thursday) and week_start_day is 6 (Sunday):
+            Returns 2025-10-19 (the previous Sunday)
+        """
+        current_weekday = target_date.weekday()
+        days_back = (current_weekday - week_start_day) % 7
+        week_start = target_date - timedelta(days=days_back)
+        return week_start
+
+    @staticmethod
+    def get_custom_week_range(target_date: date, week_start_day: int = 0) -> Tuple[date, date]:
+        """Get the start and end dates for the week containing target_date.
+
+        Args:
+            target_date: Date within the week
+            week_start_day: Day of week to start on (0=Monday, 6=Sunday)
+
+        Returns:
+            Tuple of (start_date, end_date) for the week
+        """
+        week_start = TimeUtils.get_custom_week_start(target_date, week_start_day)
+        week_end = week_start + timedelta(days=6)
+        return week_start, week_end
+
+    @staticmethod
+    def format_week_range(start_date: date, end_date: date) -> str:
+        """Format week range as readable string.
+
+        Args:
+            start_date: Week start date
+            end_date: Week end date
+
+        Returns:
+            Formatted string like "Oct 19 - Oct 25, 2025"
+        """
+        if start_date.year == end_date.year:
+            if start_date.month == end_date.month:
+                return f"{start_date.strftime('%b %d')} - {end_date.strftime('%d, %Y')}"
+            else:
+                return f"{start_date.strftime('%b %d')} - {end_date.strftime('%b %d, %Y')}"
+        else:
+            return f"{start_date.strftime('%b %d, %Y')} - {end_date.strftime('%b %d, %Y')}"
 
     @staticmethod
     def date_in_range(check_date: date, start_date: Optional[date], end_date: Optional[date]) -> bool:

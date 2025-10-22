@@ -52,11 +52,20 @@ class LiveMonitor:
                 console=self.console
             ) as live:
                 while True:
-                    # Reload session data
-                    updated_session = FileProcessor.load_session_data(recent_session.session_path)
-                    if updated_session:
-                        recent_session = updated_session
-
+                    # Check for most recent session (might be a new one!)
+                    most_recent = FileProcessor.get_most_recent_session(base_path)
+                    
+                    if most_recent:
+                        # If we detected a different session, switch to it
+                        if most_recent.session_id != recent_session.session_id:
+                            recent_session = most_recent
+                            self.console.print(f"\n[yellow]New session detected: {recent_session.session_id}[/yellow]")
+                        else:
+                            # Same session, just reload its data
+                            updated_session = FileProcessor.load_session_data(recent_session.session_path)
+                            if updated_session:
+                                recent_session = updated_session
+                    
                     # Update dashboard
                     live.update(self._generate_dashboard(recent_session))
                     time.sleep(refresh_interval)

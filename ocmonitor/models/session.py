@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import List, Optional, Dict, Any
 from pathlib import Path
 from decimal import Decimal
-from pydantic import BaseModel, Field, computed_field, validator
+from pydantic import BaseModel, Field, computed_field, field_validator, ConfigDict
 
 
 class TokenUsage(BaseModel):
@@ -61,10 +61,10 @@ class InteractionFile(BaseModel):
     project_path: Optional[str] = Field(default=None, description="Project working directory from OpenCode")
     raw_data: Dict[str, Any] = Field(default_factory=dict)
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    @validator('file_path')
+    @field_validator('file_path')
+    @classmethod
     def validate_file_path(cls, v):
         """Ensure file path is a Path object."""
         return Path(v) if not isinstance(v, Path) else v
@@ -115,10 +115,10 @@ class SessionData(BaseModel):
     files: List[InteractionFile] = Field(default_factory=list)
     session_title: Optional[str] = Field(default=None, description="Human-readable session title from OpenCode")
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    @validator('session_path')
+    @field_validator('session_path')
+    @classmethod
     def validate_session_path(cls, v):
         """Ensure session path is a Path object."""
         return Path(v) if not isinstance(v, Path) else v
