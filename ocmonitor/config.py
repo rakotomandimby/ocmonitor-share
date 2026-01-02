@@ -3,16 +3,23 @@
 import json
 import os
 import toml
-from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Dict, Optional
+
 from pydantic import BaseModel, Field, field_validator
 from decimal import Decimal
+
+def opencode_storage_path(path: str | None = None) -> str:
+    base = os.getenv("XDG_DATA_HOME") or "~/.local/share"
+    parts = [base, "opencode", "storage"]
+    if path:
+        parts.append(path)
+    return os.path.join(*parts)
 
 
 class PathsConfig(BaseModel):
     """Configuration for file paths."""
-    messages_dir: str = Field(default="/Users/shelli/.local/share/opencode/storage/message")
-    opencode_storage_dir: str = Field(default="~/.local/share/opencode/storage")
+    messages_dir: str = Field(default=opencode_storage_path("messages"))
+    opencode_storage_dir: str = Field(default=opencode_storage_path())
     export_dir: str = Field(default="./exports")
 
     @field_validator('messages_dir', 'opencode_storage_dir', 'export_dir')
